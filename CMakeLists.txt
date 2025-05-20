@@ -17,7 +17,6 @@ add_executable(
 	PixGL
 	src/main.cpp
     src/glad.c
-	src/shader.cpp
 )
 
 target_link_libraries(

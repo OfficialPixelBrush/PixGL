@@ -30,6 +30,7 @@ typedef struct Vector3 Vector3;
 
 struct Cube {
     Int3 cornerA, cornerB;
+    bool occluder = true;
     std::string textureName;
     float textureScale;
     Int3 lightMapScale;

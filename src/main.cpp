@@ -31,6 +31,28 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
+Int3 MinInt3(Int3 a, Int3 b) {
+    return Int3{std::min(a.x,b.x),std::min(a.y,b.y),std::min(a.z,b.z)};
+}
+
+Int3 MaxInt3(Int3 a, Int3 b) {
+    return Int3{std::max(a.x,b.x),std::max(a.y,b.y),std::max(a.z,b.z)};
+}
+
+bool CheckIfInsideCube(Int3 pos) {
+    for (auto& c : cubes) {
+        Int3 minCorner = MinInt3(c.cornerA, c.cornerB);
+        Int3 maxCorner = MaxInt3(c.cornerA, c.cornerB);
+
+        if (pos.x >= minCorner.x && pos.x <= maxCorner.x &&
+            pos.y >= minCorner.y && pos.y <= maxCorner.y &&
+            pos.z >= minCorner.z && pos.z <= maxCorner.z) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void loadTexture(std::string path, unsigned int& texture) {
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
@@ -78,9 +100,12 @@ float getDistance2D(int x0,int y0,int x1,int y1) {
 int main(int argc, char *argv[])
 {
     // Lights
-    lights.push_back(Int3{ 50/4,0,250/4});
-    lights.push_back(Int3{128/4,0,128/4});
-    lights.push_back(Int3{190/4,0,150/4});
+    lights.push_back(Int3{ 32,0,32});
+    lights.push_back(Int3{ 63,0,5});
+
+    cubes.push_back(Cube{Int3{30,0,10},Int3{50,20,20}});
+    cubes.push_back(Cube{Int3{50,0,20},Int3{60,20,30}});
+    cubes.push_back(Cube{Int3{22,0,60},Int3{24,0,62}});
     stbi_set_flip_vertically_on_load(true); 
 
     glfwInit();
@@ -208,12 +233,8 @@ int main(int argc, char *argv[])
                     for (int step = 0; step < std::min((int)distance, maxSteps); step++) {
                         int mapX = (int)currentX;
                         int mapY = (int)currentY;
-            
-                        if (mapX < 0 || mapX >= lightMapScale || mapY < 0 || mapY >= lightMapScale) break;
                         
-                        if (map
-                            [(int)(((float)mapY/(float)lightMapScale)*16.0)]
-                            [(int)(((float)mapX/(float)lightMapScale)*16.0)] == 1) {
+                        if (CheckIfInsideCube(Int3{mapX,0,mapY})) {
                             blocked = true;
                             break;
                         }

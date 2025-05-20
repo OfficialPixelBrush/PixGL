@@ -9,7 +9,7 @@
 
 // Math
 struct Int3 {
-    int16_t x,y,z;
+    int x,y,z;
 };
 
 typedef struct Int3 Int3;

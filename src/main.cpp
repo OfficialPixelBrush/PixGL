@@ -173,7 +173,6 @@ int main(int argc, char *argv[])
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // Disable usage of Mipmaps. We don't need them.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    /*
     int lightMapScale = 64;
     std::vector<float> data(lightMapScale*lightMapScale);
     int maxSteps = 256;
@@ -237,8 +236,7 @@ int main(int argc, char *argv[])
         }
     }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, lightMapScale, lightMapScale, 0, GL_RED, GL_FLOAT, data.data());
-    */
-
+    
     // bind Texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, baseTexture);

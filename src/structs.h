@@ -7,6 +7,7 @@
 #define FACE_EAST   0b00010000
 #define FACE_WEST   0b00100000
 
+// Math
 struct Int3 {
     int16_t x,y,z;
 };
@@ -25,8 +26,18 @@ struct Vector3 {
 
 typedef struct Vector3 Vector3;
 
+// Primitives
+
 struct Cube {
     Int3 cornerA, cornerB;
+    std::string textureName;
 };
 
 typedef struct Cube Cube;
+
+struct PointLight {
+    Int3 pos;
+    float falloff = 0.01;
+};
+
+typedef struct PointLight PointLight;

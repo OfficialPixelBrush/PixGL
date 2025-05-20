@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include "structs.h"
+#include <vector>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -21,6 +22,9 @@ unsigned int indices[] = {
     0, 1, 3, // first triangle
     1, 2, 3  // second triangle
 };
+
+std::vector<Int3> lights;
+std::vector<Cube> cubes;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -73,6 +77,10 @@ float getDistance2D(int x0,int y0,int x1,int y1) {
 
 int main(int argc, char *argv[])
 {
+    // Lights
+    lights.push_back(Int3{ 50/4,0,250/4});
+    lights.push_back(Int3{128/4,0,128/4});
+    lights.push_back(Int3{190/4,0,150/4});
     stbi_set_flip_vertically_on_load(true); 
 
     glfwInit();
@@ -139,10 +147,7 @@ int main(int argc, char *argv[])
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // Disable usage of Mipmaps. We don't need them.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    int width = 256;
-    int height = 256;
-    int lightX = 51;
-    int lightY = 80;
+    int lightMapScale = 64;
     int map[16][16] = {
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -150,78 +155,83 @@ int main(int argc, char *argv[])
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
-        {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+        {0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1},
+        {0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1},
+        {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,1},
+        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1},
+        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1},
+        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1},
+        {0,1,1,0,0,0,0,0,1,1,1,0,0,1,1,1},
+        {0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0},
+        {0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0}
     };
-    float data [256*256];
+    std::vector<float> data(lightMapScale*lightMapScale);
     int maxSteps = 256;
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int hits = 0;
-            for (int aa = 0; aa < 4; aa++) {
-                float nudgeX = 0.5;
-                float nudgeY = 0.5;
-                switch (aa) {
-                    case 0:
-                        break;
-                    case 1:
-                        nudgeX *= -1.0;
-                        break;
-                    case 2:
-                        nudgeY *= -1.0;
-                        break;
-                    case 3:
-                        nudgeX *= -1.0;
-                        nudgeY *= -1.0;
-                        break;
-                }
-                float dx = lightX - x + nudgeX;
-                float dy = lightY - y + nudgeY;
-                float distance = std::sqrt(dx * dx + dy * dy);
-        
-                if (distance == 0) {
-                    data[x + y * width] = 1.0f;
-                    continue;
-                }
-        
-                float stepX = dx / distance;
-                float stepY = dy / distance;
-        
-                float currentX = x + 0.5f;
-                float currentY = y + 0.5f;
-                bool blocked = false;
-        
-                for (int step = 0; step < std::min((int)distance, maxSteps); step++) {
-                    int mapX = (int)currentX;
-                    int mapY = (int)currentY;
-        
-                    if (mapX < 0 || mapX >= width || mapY < 0 || mapY >= height) break;
-        
-                    if (map[mapY%16][mapX%16] == 1) {
-                        blocked = true;
-                        break;
+    for (int y = 0; y < lightMapScale; y++) {
+        for (int x = 0; x < lightMapScale; x++) {
+            float currentLightValue = 0.0;
+            for (auto l : lights) {
+                for (int aa = 0; aa < 4; aa++) {
+                    float nudgeX = 0.5;
+                    float nudgeY = 0.5;
+                    switch (aa) {
+                        case 0:
+                            break;
+                        case 1:
+                            nudgeX *= -1.0;
+                            break;
+                        case 2:
+                            nudgeY *= -1.0;
+                            break;
+                        case 3:
+                            nudgeX *= -1.0;
+                            nudgeY *= -1.0;
+                            break;
                     }
-        
-                    currentX += stepX;
-                    currentY += stepY;
+                    float dx = l.x - x + nudgeX;
+                    float dy = l.z - y + nudgeY;
+                    float distance = std::sqrt(dx * dx + dy * dy);
+            
+                    if (distance == 0) {
+                        data[x + y * lightMapScale] = 1.0f;
+                        continue;
+                    }
+            
+                    float stepX = dx / distance;
+                    float stepY = dy / distance;
+            
+                    float currentX = x + 0.5f;
+                    float currentY = y + 0.5f;
+                    bool blocked = false;
+            
+                    for (int step = 0; step < std::min((int)distance, maxSteps); step++) {
+                        int mapX = (int)currentX;
+                        int mapY = (int)currentY;
+            
+                        if (mapX < 0 || mapX >= lightMapScale || mapY < 0 || mapY >= lightMapScale) break;
+                        
+                        if (map
+                            [(int)(((float)mapY/(float)lightMapScale)*16.0)]
+                            [(int)(((float)mapX/(float)lightMapScale)*16.0)] == 1) {
+                            blocked = true;
+                            break;
+                        }
+            
+                        currentX += stepX;
+                        currentY += stepY;
+                    }
+            
+                    if (!blocked) {
+                        currentLightValue += 1.0f - getDistance2D(x, y, l.x, l.z) * 0.02f;
+                    }
                 }
-        
-                if (!blocked) {
-                    data[x + y * width] += 1.0f - getDistance2D(x, y, lightX, lightY) * 0.005f;
-                }
+                // Divided by 4 to account for 4 AA samples
+                data[x + y * lightMapScale] = currentLightValue/4.0;
             }
-            data[x + y * width] /= 4.0;
         }
     }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, lightMapScale, lightMapScale, 0, GL_RED, GL_FLOAT, data.data());
 
     // bind Texture
     glActiveTexture(GL_TEXTURE0);

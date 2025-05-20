@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include "structs.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -30,8 +31,8 @@ void loadTexture(std::string path, unsigned int& texture) {
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
     // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	// set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     // set texture filtering parameters
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -80,7 +81,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "PixGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(600, 600, "PixGL", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -131,17 +132,17 @@ int main(int argc, char *argv[])
     glGenTextures(1, &lightMap);
     glBindTexture(GL_TEXTURE_2D, lightMap); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
     // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	// set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     // set texture filtering parameters
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // Disable usage of Mipmaps. We don't need them.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    int width = 128;
-    int height = 128;
-    int lightX = 32;
-    int lightY = 40;
+    int width = 256;
+    int height = 256;
+    int lightX = 51;
+    int lightY = 80;
     int map[16][16] = {
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -149,10 +150,10 @@ int main(int argc, char *argv[])
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0},
-        {0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0},
-        {0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
+        {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
+        {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -160,47 +161,64 @@ int main(int argc, char *argv[])
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     };
-    float data [128*128];
-    int maxSteps = 64;
+    float data [256*256];
+    int maxSteps = 256;
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-    
-            float dx = lightX - x;
-            float dy = lightY - y;
-            float distance = std::sqrt(dx * dx + dy * dy);
-    
-            if (distance == 0) {
-                data[x + y * width] = 1.0f;
-                continue;
-            }
-    
-            float stepX = dx / distance;
-            float stepY = dy / distance;
-    
-            float currentX = x + 0.5f;
-            float currentY = y + 0.5f;
-            bool blocked = false;
-    
-            for (int step = 0; step < std::min((int)distance, maxSteps); step++) {
-                int mapX = (int)currentX;
-                int mapY = (int)currentY;
-    
-                if (mapX < 0 || mapX >= width || mapY < 0 || mapY >= height) break;
-    
-                if (map[mapY%16][mapX%16] == 1) {
-                    blocked = true;
-                    break;
+            int hits = 0;
+            for (int aa = 0; aa < 4; aa++) {
+                float nudgeX = 0.5;
+                float nudgeY = 0.5;
+                switch (aa) {
+                    case 0:
+                        break;
+                    case 1:
+                        nudgeX *= -1.0;
+                        break;
+                    case 2:
+                        nudgeY *= -1.0;
+                        break;
+                    case 3:
+                        nudgeX *= -1.0;
+                        nudgeY *= -1.0;
+                        break;
                 }
-    
-                currentX += stepX;
-                currentY += stepY;
+                float dx = lightX - x + nudgeX;
+                float dy = lightY - y + nudgeY;
+                float distance = std::sqrt(dx * dx + dy * dy);
+        
+                if (distance == 0) {
+                    data[x + y * width] = 1.0f;
+                    continue;
+                }
+        
+                float stepX = dx / distance;
+                float stepY = dy / distance;
+        
+                float currentX = x + 0.5f;
+                float currentY = y + 0.5f;
+                bool blocked = false;
+        
+                for (int step = 0; step < std::min((int)distance, maxSteps); step++) {
+                    int mapX = (int)currentX;
+                    int mapY = (int)currentY;
+        
+                    if (mapX < 0 || mapX >= width || mapY < 0 || mapY >= height) break;
+        
+                    if (map[mapY%16][mapX%16] == 1) {
+                        blocked = true;
+                        break;
+                    }
+        
+                    currentX += stepX;
+                    currentY += stepY;
+                }
+        
+                if (!blocked) {
+                    data[x + y * width] += 1.0f - getDistance2D(x, y, lightX, lightY) * 0.005f;
+                }
             }
-    
-            if (!blocked) {
-                data[x + y * width] = 1.0f - getDistance2D(x, y, lightX, lightY) * 0.01f;
-            } else {
-                data[x + y * width] = 0.0f;
-            }
+            data[x + y * width] /= 4.0;
         }
     }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, data);

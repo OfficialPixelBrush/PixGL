@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
     lights.push_back(Int3{ 32,0,32});
     lights.push_back(Int3{ 63,0,5});
 
+    // Cubes
     cubes.push_back(Cube{Int3{30,0,10},Int3{50,20,20}});
     cubes.push_back(Cube{Int3{50,0,20},Int3{60,20,30}});
     cubes.push_back(Cube{Int3{22,0,60},Int3{24,0,62}});
@@ -172,25 +173,8 @@ int main(int argc, char *argv[])
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // Disable usage of Mipmaps. We don't need them.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    /*
     int lightMapScale = 64;
-    int map[16][16] = {
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1},
-        {0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1},
-        {0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,1},
-        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1},
-        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1},
-        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1},
-        {0,1,1,0,0,0,0,0,1,1,1,0,0,1,1,1},
-        {0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    };
     std::vector<float> data(lightMapScale*lightMapScale);
     int maxSteps = 256;
     for (int y = 0; y < lightMapScale; y++) {
@@ -253,6 +237,7 @@ int main(int argc, char *argv[])
         }
     }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, lightMapScale, lightMapScale, 0, GL_RED, GL_FLOAT, data.data());
+    */
 
     // bind Texture
     glActiveTexture(GL_TEXTURE0);
@@ -262,6 +247,7 @@ int main(int argc, char *argv[])
 
     ourShader.use();
     ourShader.setInt("BaseTexture", 0); // or with shader class
+    ourShader.setFloat("TextureScale", 16.0); // or with shader class
     ourShader.setInt("LightMap", 1); // or with shader class
 
     while(!glfwWindowShouldClose(window))

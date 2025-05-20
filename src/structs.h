@@ -31,6 +31,8 @@ typedef struct Vector3 Vector3;
 struct Cube {
     Int3 cornerA, cornerB;
     std::string textureName;
+    float textureScale;
+    Int3 lightMapScale;
 };
 
 typedef struct Cube Cube;

@@ -30,10 +30,13 @@ typedef struct Vector3 Vector3;
 
 struct Cube {
     Int3 cornerA, cornerB;
+    std::string textureName = "";
     bool occluder = true;
-    std::string textureName;
-    float textureScale;
-    Int3 lightMapScale;
+    bool emissive = true;
+    float textureScaleHorizontal = 1.0;
+    float textureScaleVertical = 1.0;
+    // References biggest dimension
+    int lightMapScale = 64;
 };
 
 typedef struct Cube Cube;

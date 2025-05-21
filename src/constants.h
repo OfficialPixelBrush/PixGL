@@ -1,0 +1,1 @@
+#define TOTAL_LIGHTMAP_SIZE 1024

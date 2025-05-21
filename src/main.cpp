@@ -13,9 +13,10 @@
 #include "stb_image.h"
 
 #include "shader.h"
+#include "constants.h"
 
 int windowWidth = 800;
-int windowHeight = 600;
+int windowHeight = 450;
 
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -144,7 +145,7 @@ void loadTexture(std::string path, unsigned int& texture) {
     }
     else
     {
-        std::cout << "Failed to load texture" << std::endl;
+        std::cout << "Failed to load texture at \"" << path << "\"" << std::endl;
     }
     stbi_image_free(data);
 }
@@ -153,14 +154,134 @@ float getDistance2D(int x0,int y0,int x1,int y1) {
     return sqrt(pow(x1-x0,2)+pow(y1-y0,2));
 }
 
+void GenerateLevelMesh(uint &VBO) {
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    int fullSize = 6*6*5;
+    float newVerts[fullSize*cubes.size()];
+    for(unsigned int i = 0; i < cubes.size(); i++) {
+        for (unsigned int v = 0; v < fullSize; v++) {
+            switch (v % 5) {
+                case 0: // x
+                    if (vertices[v] < -0.1f)
+                        newVerts[v + i*(fullSize)] = (float)cubes[i].cornerA.x;
+                    else if (vertices[v] > 0.1f)
+                        newVerts[v + i*(fullSize)] = (float)cubes[i].cornerB.x;
+                    else
+                        newVerts[v + i*(fullSize)] = vertices[v];
+                    break;
+
+                case 1: // y
+                    if (vertices[v] < -0.1f)
+                        newVerts[v + i*(fullSize)] = (float)cubes[i].cornerA.y;
+                    else if (vertices[v] > 0.1f)
+                        newVerts[v + i*(fullSize)] = (float)cubes[i].cornerB.y;
+                    else
+                        newVerts[v + i*(fullSize)] = vertices[v];
+                    break;
+
+                case 2: // z
+                    if (vertices[v] < -0.1f)
+                        newVerts[v + i*(fullSize)] = (float)cubes[i].cornerA.z;
+                    else if (vertices[v] > 0.1f)
+                        newVerts[v + i*(fullSize)] = (float)cubes[i].cornerB.z;
+                    else
+                        newVerts[v + i*(fullSize)] = vertices[v];
+                    break;
+                default: // texcoords or other
+                    newVerts[v + i*(fullSize)] = vertices[v];
+                    break;
+            }
+        }
+    }
+    glBufferData(GL_ARRAY_BUFFER, sizeof(newVerts), newVerts, GL_STATIC_DRAW);
+}
+
+void GenerateLightMap(uint& lightMap) {
+    glGenTextures(1, &lightMap);
+    glBindTexture(GL_TEXTURE_2D, lightMap); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
+    // set the texture wrapping parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // set texture filtering parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Total size of all combined lightmaps
+    std::vector<float> data(64*TOTAL_LIGHTMAP_SIZE);
+    int maxSteps = 256;
+    for (int ci = 0; ci < cubes.size(); ci++) {
+        auto& c = cubes[ci];
+        for (int y = 0; y < c.lightMapScale; y++) {
+            for (int x = 0; x < c.lightMapScale; x++) {
+                float currentLightValue = 0.0;
+                for (auto l : lights) {
+                    for (int aa = 0; aa < 4; aa++) {
+                        float nudgeX = 0.5;
+                        float nudgeY = 0.5;
+                        switch (aa) {
+                            case 0:
+                                break;
+                            case 1:
+                                nudgeX *= -1.0;
+                                break;
+                            case 2:
+                                nudgeY *= -1.0;
+                                break;
+                            case 3:
+                                nudgeX *= -1.0;
+                                nudgeY *= -1.0;
+                                break;
+                        }
+                        float dx = l.x - x + nudgeX;
+                        float dy = l.z - y + nudgeY;
+                        float distance = std::sqrt(dx * dx + dy * dy);
+                
+                        if (distance == 0) {
+                            currentLightValue += 1.0f;
+                            continue;
+                        }
+                
+                        float stepX = dx / distance;
+                        float stepY = dy / distance;
+                
+                        float currentX = x + 0.5f;
+                        float currentY = y + 0.5f;
+                        bool blocked = false;
+                
+                        for (int step = 0; step < std::min((int)distance, maxSteps); step++) {
+                            int mapX = (int)currentX;
+                            int mapY = (int)currentY;
+                            
+                            if (CheckIfInsideCube(Int3{mapX,0,mapY})) {
+                                blocked = true;
+                                break;
+                            }
+                
+                            currentX += stepX;
+                            currentY += stepY;
+                        }
+                
+                        if (!blocked) {
+                            currentLightValue += 1.0f - getDistance2D(x, y, l.x, l.z) * 0.02f;
+                        }
+                    }
+                    // Divided by 4 to account for 4 AA samples
+                    data[x + y * c.lightMapScale + (c.lightMapScale*c.lightMapScale) * ci] = currentLightValue/4.0;
+                }
+            }
+        }
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 64, TOTAL_LIGHTMAP_SIZE, 0, GL_RED, GL_FLOAT, data.data());
+}
+
 int main(int argc, char *argv[])
 {
     // Lights
     lights.push_back(Int3{ 16,0,38});
-    //lights.push_back(Int3{ 63,0,5});
+    //lights.push_back(Int3{ 64,0,64});
 
     // Cubes
-    cubes.push_back(Cube{Int3{0,0,64},Int3{64,0,0},false});
+    cubes.push_back(Cube{Int3{0,0,64},Int3{64,0,0},"brick_dithered_big",false,false});
     cubes.push_back(Cube{Int3{0,0,0},Int3{10,10,10}});
     cubes.push_back(Cube{Int3{30,0,10},Int3{50,5,20}});
     cubes.push_back(Cube{Int3{50,0,20},Int3{60,20,30}});
@@ -201,45 +322,7 @@ int main(int argc, char *argv[])
 
     glBindVertexArray(VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    float newVerts[6*6*5*cubes.size()];
-    for(unsigned int i = 0; i < cubes.size(); i++) {
-        for (unsigned int v = 0; v < 6*6*5; v++) {
-            switch (v % 5) {
-                case 0: // x
-                    if (vertices[v] < -0.1f)
-                        newVerts[v + i*(6*6*5)] = (float)cubes[i].cornerA.x;
-                    else if (vertices[v] > 0.1f)
-                        newVerts[v + i*(6*6*5)] = (float)cubes[i].cornerB.x;
-                    else
-                        newVerts[v + i*(6*6*5)] = vertices[v];
-                    break;
-
-                case 1: // y
-                    if (vertices[v] < -0.1f)
-                        newVerts[v + i*(6*6*5)] = (float)cubes[i].cornerA.y;
-                    else if (vertices[v] > 0.1f)
-                        newVerts[v + i*(6*6*5)] = (float)cubes[i].cornerB.y;
-                    else
-                        newVerts[v + i*(6*6*5)] = vertices[v];
-                    break;
-
-                case 2: // z
-                    if (vertices[v] < -0.1f)
-                        newVerts[v + i*(6*6*5)] = (float)cubes[i].cornerA.z;
-                    else if (vertices[v] > 0.1f)
-                        newVerts[v + i*(6*6*5)] = (float)cubes[i].cornerB.z;
-                    else
-                        newVerts[v + i*(6*6*5)] = vertices[v];
-                    break;
-
-                default: // texcoords or other
-                    newVerts[v + i*(6*6*5)] = vertices[v];
-                    break;
-            }
-        }
-    }
-    glBufferData(GL_ARRAY_BUFFER, sizeof(newVerts), newVerts, GL_STATIC_DRAW);
+    GenerateLevelMesh(VBO);
 
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
@@ -251,80 +334,9 @@ int main(int argc, char *argv[])
     // load and create a texture 
     // -------------------------
     unsigned int baseTexture, lightMap;
-    loadTexture("textures/tile.png",baseTexture);
-    glGenTextures(1, &lightMap);
-    glBindTexture(GL_TEXTURE_2D, lightMap); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
-    // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // Disable usage of Mipmaps. We don't need them.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    int lightMapScale = 64;
-    std::vector<float> data(lightMapScale*lightMapScale);
-    int maxSteps = 256;
-    for (int y = 0; y < lightMapScale; y++) {
-        for (int x = 0; x < lightMapScale; x++) {
-            float currentLightValue = 0.0;
-            for (auto l : lights) {
-                for (int aa = 0; aa < 4; aa++) {
-                    float nudgeX = 0.5;
-                    float nudgeY = 0.5;
-                    switch (aa) {
-                        case 0:
-                            break;
-                        case 1:
-                            nudgeX *= -1.0;
-                            break;
-                        case 2:
-                            nudgeY *= -1.0;
-                            break;
-                        case 3:
-                            nudgeX *= -1.0;
-                            nudgeY *= -1.0;
-                            break;
-                    }
-                    float dx = l.x - x + nudgeX;
-                    float dy = l.z - y + nudgeY;
-                    float distance = std::sqrt(dx * dx + dy * dy);
-            
-                    if (distance == 0) {
-                        data[x + y * lightMapScale] = 1.0f;
-                        continue;
-                    }
-            
-                    float stepX = dx / distance;
-                    float stepY = dy / distance;
-            
-                    float currentX = x + 0.5f;
-                    float currentY = y + 0.5f;
-                    bool blocked = false;
-            
-                    for (int step = 0; step < std::min((int)distance, maxSteps); step++) {
-                        int mapX = (int)currentX;
-                        int mapY = (int)currentY;
-                        
-                        if (CheckIfInsideCube(Int3{mapX,0,mapY})) {
-                            blocked = true;
-                            break;
-                        }
-            
-                        currentX += stepX;
-                        currentY += stepY;
-                    }
-            
-                    if (!blocked) {
-                        currentLightValue += 1.0f - getDistance2D(x, y, l.x, l.z) * 0.02f;
-                    }
-                }
-                // Divided by 4 to account for 4 AA samples
-                data[x + y * lightMapScale] = currentLightValue/4.0;
-            }
-        }
-    }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, lightMapScale, lightMapScale, 0, GL_RED, GL_FLOAT, data.data());
+    loadTexture("textures/brick_dithered_big.png",baseTexture);
+    
+    GenerateLightMap(lightMap);
         
     // bind Texture
     glActiveTexture(GL_TEXTURE0);
@@ -334,7 +346,8 @@ int main(int argc, char *argv[])
 
     ourShader.use();
     ourShader.setInt("BaseTexture", 0); // or with shader class
-    ourShader.setFloat("TextureScale", 16.0); // or with shader class
+    ourShader.setFloat("TextureScaleHorizontal", 4.0);
+    ourShader.setFloat("TextureScaleVertical", 4.0);
     ourShader.setInt("LightMap", 1); // or with shader class
 
     glm::mat4 model = glm::mat4(1.0f);
@@ -368,7 +381,11 @@ int main(int argc, char *argv[])
         ourShader.setMat4("view",view);
         
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36*cubes.size());
+        for (int ci = 0; ci < cubes.size(); ci++) {
+            ourShader.setInt("LightMapOffset", ci+1);
+            ourShader.setBool("Emissive", cubes[ci].emissive);
+            glDrawArrays(GL_TRIANGLES, 36*ci, 36*(ci+1));
+        }
 
         // swap buffers and poll IO events
         glfwSwapBuffers(window);

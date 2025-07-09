@@ -15,7 +15,7 @@ include_directories(
 
 add_executable(
 	PixGL
-	src/main.cpp
+	src/old/main.cpp
     src/glad.c
 )
 

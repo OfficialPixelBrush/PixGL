@@ -2,7 +2,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <cmath>
-#include "structs.h"
+#include "../structs.h"
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -10,10 +10,10 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "../stb_image.h"
 
-#include "shader.h"
-#include "constants.h"
+#include "../shader.h"
+#include "../constants.h"
 
 int windowWidth = 800;
 int windowHeight = 450;
